@@ -1,0 +1,6 @@
+@ScreenshotTool_HostAddress = http://localhost:5234
+
+GET {{ScreenshotTool_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
