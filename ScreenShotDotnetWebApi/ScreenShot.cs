@@ -5,19 +5,16 @@ namespace ScreenshotTool
 {
     public class ScreenShot
     {
-        //tg
-        public async Task<(string FilePath, TimeSpan ElapsedTime)> CaptureScreenshotAsync(string url, int width, string customCss, string folderPath )
+        //tg 
+        public async Task<(string FilePath, TimeSpan ElapsedTime)> CaptureScreenshotAsync(string url, int width, string customCss, string folderPath ,int delayMilliseconds = 0)
         {
+            var stopwatch = Stopwatch.StartNew();
 
-
-            //if (!Directory.Exists(screenshotFolder))
-            //    Directory.CreateDirectory(screenshotFolder);
+            //if (!Directory.Exists(folderPath))
+            //    Directory.CreateDirectory(folderPath);
 
             //var filename = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-            //var filePath = Path.Combine(screenshotFolder, filename);
-
-
-            var stopwatch = Stopwatch.StartNew();
+            //var filePath = Path.Combine(folderPath, filename);
 
             string titleOfPage = "untitled";
             try
@@ -37,10 +34,11 @@ namespace ScreenshotTool
             }
 
             var now = DateTime.Now;
-            var screenshotFolder = Path.Combine(folderPath,"screenshot", now.Year.ToString(), now.Month.ToString("D2"), now.Day.ToString("D2"));
+            var screenshotFolder = Path.Combine(folderPath, "screenshot", now.Year.ToString(), now.Month.ToString("D2"), now.Day.ToString("D2"));
             Directory.CreateDirectory(screenshotFolder);
             var filename = $"{titleOfPage}_{now:HH_mm_ss}.png";
             var filePath = Path.Combine(screenshotFolder, filename);
+
 
             using var playwright = await Playwright.CreateAsync();
             await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
@@ -62,6 +60,10 @@ namespace ScreenshotTool
             {
                 await page.AddStyleTagAsync(new PageAddStyleTagOptions { Content = customCss });
             }
+            if (delayMilliseconds > 0)
+            {
+                await page.WaitForTimeoutAsync(delayMilliseconds);
+            }
             await page.ScreenshotAsync(new PageScreenshotOptions
             {
                 Path = filePath,
@@ -69,6 +71,7 @@ namespace ScreenshotTool
             });
             stopwatch.Stop();
             return (filePath, stopwatch.Elapsed);
+          
         }
 
 

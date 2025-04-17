@@ -14,7 +14,7 @@ namespace ScreenshotTool.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index([FromQuery] string url, [FromQuery] int? width, [FromQuery] string? customCss, [FromQuery] string? folderPath)
+        public async Task<IActionResult> Index([FromQuery] string url, [FromQuery] int? width, [FromQuery] string? customCss, [FromQuery] string? folderPath, [FromQuery] int? delay)
         {
             if (string.IsNullOrEmpty(url))
                 return BadRequest("URL trống");
@@ -42,8 +42,8 @@ namespace ScreenshotTool.Controllers
             {
                 return BadRequest(new { message = "chưa chọn folderPath" });
             }
-            var filePath = await _screenShot.CaptureScreenshotAsync(url, resolvedWidth, resolvedCss, folderPath);
-            return Ok(new { message = "Chụp màn hình thành công", path=filePath.FilePath});
+            var filePath = await _screenShot.CaptureScreenshotAsync(url, resolvedWidth, resolvedCss, folderPath, delay ?? 0);
+            return Ok(new { message = "Chụp màn hình thành công", path=filePath.FilePath, ms=filePath.ElapsedTime});
         }
     }
 }
