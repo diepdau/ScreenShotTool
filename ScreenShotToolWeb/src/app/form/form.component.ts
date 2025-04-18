@@ -1,38 +1,45 @@
 import { Component } from '@angular/core';
+import { NotificationService } from '../services/notification.service';
 import {
-  AbstractControl,
   FormBuilder,
   FormGroup,
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-
+import { UrlService } from '../services/url.service';
+import { ScreenshotService } from '../services/screenshot.service';
 @Component({
   selector: 'app-form',
   standalone: false,
   templateUrl: './form.component.html',
-  styleUrl: './form.component.css',
+  styleUrls: ['./form.component.css'],
 })
 export class FormComponent {
-  form!: FormGroup;
-  fetchedUrls: string[] = [];
-  resultList: { url: string; message: string; path: string }[] = [];
+  form: FormGroup;
   isLoading = false;
   statusMessage = '';
   logs: { type: 'info' | 'error'; message: string }[] = [];
+  fetchedUrls: string[] = [];
+  resultList: string[] = [];
+  screenshotBlobs: Blob[] = [];
   languageList: { languageName: string; languageId: string }[] = [];
-  constructor(private fb: FormBuilder, private http: HttpClient) {
-    const urlRegex =
-      /^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/;
+  urlRegex =
+    /^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/;
+
+  constructor(
+    private fb: FormBuilder,
+    private urlService: UrlService,
+    private screenshotService: ScreenshotService,
+    private notificationService: NotificationService
+  ) {
     this.form = this.fb.group(
       {
-        api: ['', Validators.pattern(urlRegex)],
+        api: ['', Validators.pattern(this.urlRegex)],
         urls: [''],
         customCss: [''],
         delay: ['', Validators.min(0)],
         width: ['', Validators.min(300)],
-        folderPath: ['', Validators.required],
+        folderPath: [''],
         projectSlug: [''],
         languageId: [''],
       },
@@ -40,80 +47,65 @@ export class FormComponent {
         validators: this.atLeastOneFieldValidator,
       }
     );
-    this.http
-      .get<any>('https://67ff715358f18d7209f1348e.mockapi.io/api/v1/urls/url')
-      .subscribe({
-        next: (data) => {
-          this.languageList = data;
-          this.addLog('Fetched language successfull');
-        },
-        error: (err) => {
-          this.addLog('Error fetching language' + err.message, 'error');
-        },
-      });
+    this.setLanguageList();
   }
   atLeastOneFieldValidator(group: FormGroup): ValidationErrors | null {
-    // const api = group.get('api')?.value?.trim();
-    // const urls = group.get('urls')?.value?.trim();
-    // if (!api && !urls) {
-    //   return { requireOne: true };
-    // }
-    // if (api && !urls) {
-    //   return { requireOne: true };
-    // }
-    // return null;
-
-    const projectSlug = group.get('projectSlug')?.value?.trim();
-    const languageId = group.get('languageId')?.value?.trim();
+    const api = group.get('api')?.value?.trim();
     const urls = group.get('urls')?.value?.trim();
-    if (projectSlug && languageId && !urls) {
+    if (!api && !urls) {
       return { requireOne: true };
     }
-    if (!projectSlug && !languageId && !urls) {
+    if (api && !urls) {
       return { requireOne: true };
     }
     return null;
   }
-  fetchUrlsFromApi() {
-    this.isLoading = true;
-    this.statusMessage = 'Fetching URLs...';
 
-    this.http.get<any>(this.form.value.api).subscribe({
+  private setLanguageList(): void {
+    this.languageList = [
+      { languageName: 'German', languageId: '3' },
+      { languageName: 'Hungarian', languageId: '33' },
+      { languageName: 'German', languageId: '2' },
+      { languageName: 'Latvian', languageId: '34' },
+      { languageName: 'English Global', languageId: '1' },
+      { languageName: 'Slovakian', languageId: '38' },
+      { languageName: 'Canada-French', languageId: '52' },
+      { languageName: 'Dutch', languageId: '11' },
+    ];
+  }
+  fetchUrlsFromApi() {
+    this.urlService.fetchUrlsFromApi(this.form.value.api).subscribe({
       next: (data) => {
         this.fetchedUrls = data;
         this.form.patchValue({ urls: data.join(', ') });
-        this.statusMessage = ' URLs loaded successfully.';
+        this.notificationService.success('URLs loaded successfully.');
         this.addLog('Fetched ' + data.length + ' URLs');
       },
       error: (err) => {
-        this.statusMessage = 'Failed to fetch URLs';
+        this.notificationService.error('Failed to fetch URLs');
         this.addLog('Error fetching URLs: ' + err.message, 'error');
       },
-      complete: () => (this.isLoading = false),
     });
   }
 
-  // url projectSlug and languageId
   fetchUrlsProjectLanguageIdFromApi() {
-    this.isLoading = true;
-    this.statusMessage = 'Fetching URLs...';
-
-    this.http
-      .get<any>(
-        `https://tcma-api-public.dev.usms.impartner.io/showcase/urls?ProjectSlug=${this.form.value.projectSlug}&LanguageId= ${this.form.value.languageId}&AccountId=147347`
+    this.urlService
+      .fetchUrlsProjectLanguageIdFromApi(
+        this.form.value.projectSlug,
+        this.form.value.languageId
       )
       .subscribe({
         next: (data) => {
           this.fetchedUrls = data;
           this.form.patchValue({ urls: data.join(', ') });
-          this.statusMessage = ' URLs loaded successfully.';
+          this.notificationService.success('URLs loaded successfully.');
           this.addLog('Fetched ' + data.length + ' URLs');
         },
         error: (err) => {
-          this.statusMessage = 'Failed to fetch URLs';
+          this.notificationService.error('Failed to fetch URLs');
+          this.statusMessage = '';
           this.addLog('Error fetching URLs: ' + err.message, 'error');
         },
-        complete: () => (this.isLoading = false),
       });
   }
 
@@ -122,17 +114,29 @@ export class FormComponent {
       this.form.markAllAsTouched();
       return;
     }
+
     this.isLoading = true;
-    this.statusMessage = 'Processing...';
+    this.statusMessage = 'Processing screenshot...';
     this.resultList = [];
-    const formValue = this.form.value;
-    const urlsArray = formValue.urls
-      ? formValue.urls
-          .split(',')
-          .map((url: string) => url.trim())
-          .filter(Boolean)
-      : [];
-    let screenshotCount = 1;
+    this.screenshotBlobs = [];
+
+    const urlsArray = this.form.value.urls
+      .split(',')
+      .map((url: string) => url.trim())
+      .filter(Boolean);
+
+    const invalidUrls = urlsArray.filter(
+      (url: any) => !this.urlRegex.test(url)
+    );
+    if (invalidUrls.length > 0) {
+      this.isLoading = false;
+      this.notificationService.error(
+        `The following URLs are invalid: \n\n${invalidUrls.join('\n')}`
+      );
+      this.addLog(`Invalid URLs: ${invalidUrls.join('\n')}`, 'error');
+      return;
+    }
+
     function chunkArray(array: any[], chunkSize: number) {
       const chunks = [];
       for (let i = 0; i < array.length; i += chunkSize) {
@@ -140,61 +144,103 @@ export class FormComponent {
       }
       return chunks;
     }
-
+    let screenshotCount = 1;
     const chunks = chunkArray(urlsArray, 10);
-
     for (const chunk of chunks) {
-      const promises = chunk.map((url, index) => {
-        const queryString = new URLSearchParams({
+      const promises = chunk.map(async (url) => {
+        const queryParams = new URLSearchParams({
           url: url,
-          width: formValue.width || '',
-          customCss: formValue.customCss || '',
-          folderPath: formValue.folderPath || '',
-          delay: formValue.delay || 0,
+          width: this.form.value.width || '',
+          customCss: this.form.value.customCss || '',
+          folderPath: this.form.value.folderPath || '',
+          delay: this.form.value.delay || 0,
         }).toString();
-
-        const fullUrl = `https://localhost:7156/api/screen-shot?${queryString}`;
-
-        return this.http
-          .get(fullUrl)
-          .toPromise()
-          .then((res: any) => {
-            this.addLog(`${screenshotCount++} Screenshot saved: ${res?.path}`);
-          })
-          .catch((err) => {
-            this.addLog(`Error on ${url}: ${JSON.stringify(err)}`);
-          });
+        try {
+          const blob = await this.screenshotService.captureScreenshot(
+            queryParams
+          );
+          if (blob) {
+            this.screenshotBlobs.push(blob);
+            this.addLog(`${screenshotCount++} Screenshot captured for ${url}`);
+            this.resultList.push(url);
+          } else {
+            this.addLog(`Screenshot not captured for ${url}`, 'error');
+          }
+        } catch (error) {
+          this.addLog(
+            `${screenshotCount++} Error capturing ${url}: ${JSON.stringify(
+              error
+            )}`,
+            'error'
+          );
+        }
       });
       await Promise.all(promises);
     }
-    this.statusMessage = 'Processed successfully';
-
-    setTimeout(() => {
-      this.isLoading = false;
-      this.statusMessage = '';
-    }, 2000);
+    this.isLoading = false;
+    this.statusMessage = '';
+    this.notificationService.success('Photo processing complete');
   }
 
+  async saveToLocalFolder() {
+    this.isLoading = true;
+    this.statusMessage = 'Processing...';
+    try {
+      if (!this.screenshotBlobs.length || !this.resultList?.length) {
+        this.addLog('Cannot find image!');
+        return;
+      }
+      const dirHandle = await (window as any).showDirectoryPicker();
+      for (let i = 0; i < this.screenshotBlobs.length; i++) {
+        const blob = this.screenshotBlobs[i];
+        const originalUrl = this.resultList[i];
+        let titleOfPage = 'untitled';
+        try {
+          const segments = new URL(originalUrl).pathname.split('/');
+          const pageIndex = segments.findIndex((s) => s === 'page');
+          if (pageIndex !== -1 && pageIndex + 1 < segments.length) {
+            titleOfPage = segments[pageIndex + 1];
+          }
+        } catch (e) {
+          this.notificationService.error('URL parse error');
+          console.warn('URL parse error:', e);
+        }
+
+        const now = new Date();
+        const timeStr = `${now.getHours()}_${now.getMinutes()}_${now.getSeconds()}`;
+        const fileName = `${titleOfPage}_${timeStr}.png`;
+
+        const fileHandle = await dirHandle.getFileHandle(fileName, {
+          create: true,
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      }
+      this.notificationService.success(
+        ` ${this.screenshotBlobs.length} images saved to the folder of your choice`
+      );
+      this.statusMessage = '';
+      this.addLog(`Image saved to folder successfully!`);
+      this.isLoading = false;
+    } catch (error) {
+      this.notificationService.error('Error save capture');
+      this.addLog(`Error save capture ${error}`, 'error');
+    }
+  }
   onReset() {
     this.form.reset();
     this.statusMessage = '';
     this.isLoading = false;
     this.logs = [];
   }
-  chooseFolder(event: any) {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      const firstFilePath = files[0].webkitRelativePath;
-      const lastSlashIndex = firstFilePath.lastIndexOf('/');
-      const folderPath = firstFilePath.substring(0, lastSlashIndex);
-      this.form.patchValue({ folderPath });
-      console.log('Selected folder:', folderPath);
-    }
-  }
-
   addLog(message: string, type: 'info' | 'error' = 'info') {
     const now = new Date();
     const timeStr = now.toLocaleTimeString();
     this.logs.push({ type, message: `[${timeStr}] ${message}` });
+  }
+
+  get canSave(): boolean {
+    return this.screenshotBlobs.length > 0 && this.resultList.length > 0;
   }
 }

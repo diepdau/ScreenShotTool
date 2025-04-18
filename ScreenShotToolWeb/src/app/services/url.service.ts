@@ -1,0 +1,22 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class UrlService {
+  constructor(private http: HttpClient) {}
+
+  fetchUrlsFromApi(apiUrl: string): Observable<any> {
+    return this.http.get<any>(apiUrl);
+  }
+
+  fetchUrlsProjectLanguageIdFromApi(
+    projectSlug: string,
+    languageId: string
+  ): Observable<any> {
+    const url = `https://tcma-api-public.dev.usms.impartner.io/showcase/urls?ProjectSlug=${projectSlug}&LanguageId=${languageId}&AccountId=147347`;
+    return this.http.get<any>(url);
+  }
+}
