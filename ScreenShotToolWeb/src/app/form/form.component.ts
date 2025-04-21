@@ -8,6 +8,7 @@ import {
 } from '@angular/forms';
 import { UrlService } from '../services/url.service';
 import { ScreenshotService } from '../services/screenshot.service';
+import { ScreenshotResult } from '../models/screentShot.models';
 @Component({
   selector: 'app-form',
   standalone: false,
@@ -20,8 +21,10 @@ export class FormComponent {
   statusMessage = '';
   logs: { type: 'info' | 'error'; message: string }[] = [];
   fetchedUrls: string[] = [];
-  resultList: string[] = [];
+  resultList1: string[] = [];
   screenshotBlobs: Blob[] = [];
+  resultList: ScreenshotResult[] = [];
+
   languageList: { languageName: string; languageId: string }[] = [];
   urlRegex =
     /^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/;
@@ -108,7 +111,77 @@ export class FormComponent {
         },
       });
   }
+  // async onSubmit() {
+  //   if (this.form.invalid) {
+  //     this.form.markAllAsTouched();
+  //     return;
+  //   }
 
+  //   this.isLoading = true;
+  //   this.statusMessage = 'Processing screenshot...';
+  //   this.resultList = [];
+  //   this.screenshotBlobs = [];
+
+  //   const urlsArray = this.form.value.urls
+  //     .split(',')
+  //     .map((url: string) => url.trim())
+  //     .filter(Boolean);
+
+  //   const invalidUrls = urlsArray.filter(
+  //     (url: any) => !this.urlRegex.test(url)
+  //   );
+  //   if (invalidUrls.length > 0) {
+  //     this.isLoading = false;
+  //     this.notificationService.error(
+  //       `The following URLs are invalid: \n\n${invalidUrls.join('\n')}`
+  //     );
+  //     this.addLog(`Invalid URLs: ${invalidUrls.join('\n')}`, 'error');
+  //     return;
+  //   }
+
+  //   function chunkArray(array: any[], chunkSize: number) {
+  //     const chunks = [];
+  //     for (let i = 0; i < array.length; i += chunkSize) {
+  //       chunks.push(array.slice(i, i + chunkSize));
+  //     }
+  //     return chunks;
+  //   }
+  //   let screenshotCount = 1;
+  //   const chunks = chunkArray(urlsArray, 10);
+  //   for (const chunk of chunks) {
+  //     const promises = chunk.map(async (url) => {
+  //       const payload = {
+  //         url: url,
+  //         width: this.form.value.width,
+  //         customCss: this.form.value.customCss,
+  //         folderPath: this.form.value.folderPath,
+  //         delay: this.form.value.delay,
+  //       };
+
+  //       try {
+  //         const blob = await this.screenshotService.captureScreenshot(payload);
+  //         if (blob) {
+  //           this.screenshotBlobs.push(blob);
+  //           this.addLog(`${screenshotCount++} Screenshot captured for ${url}`);
+  //           this.resultList.push(url);
+  //         } else {
+  //           this.addLog(`Screenshot not captured for ${url}`, 'error');
+  //         }
+  //       } catch (error) {
+  //         this.addLog(
+  //           `${screenshotCount++} Error capturing ${url}: ${JSON.stringify(
+  //             error
+  //           )}`,
+  //           'error'
+  //         );
+  //       }
+  //     });
+  //     await Promise.all(promises);
+  //   }
+  //   this.isLoading = false;
+  //   this.statusMessage = '';
+  //   this.notificationService.success('Photo processing complete');
+  // }
   async onSubmit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -144,25 +217,31 @@ export class FormComponent {
       }
       return chunks;
     }
+
     let screenshotCount = 1;
     const chunks = chunkArray(urlsArray, 10);
+
     for (const chunk of chunks) {
       const promises = chunk.map(async (url) => {
-        const queryParams = new URLSearchParams({
-          url: url,
-          width: this.form.value.width || '',
-          customCss: this.form.value.customCss || '',
-          folderPath: this.form.value.folderPath || '',
-          delay: this.form.value.delay || 0,
-        }).toString();
+        const payload = {
+          url,
+          width: this.form.value.width,
+          customCss: this.form.value.customCss,
+          folderPath: this.form.value.folderPath,
+          delay: this.form.value.delay,
+        };
+
         try {
-          const blob = await this.screenshotService.captureScreenshot(
-            queryParams
-          );
-          if (blob) {
-            this.screenshotBlobs.push(blob);
+          const res = await this.screenshotService.captureScreenshot(payload);
+          if (res && res.base64Image) {
+            this.resultList.push({
+              url,
+              image: res.base64Image,
+              isSame: res.isSameAsPrevious,
+              diff: res.diffPath,
+            });
             this.addLog(`${screenshotCount++} Screenshot captured for ${url}`);
-            this.resultList.push(url);
+            this.resultList1.push(url);
           } else {
             this.addLog(`Screenshot not captured for ${url}`, 'error');
           }
@@ -175,8 +254,10 @@ export class FormComponent {
           );
         }
       });
+
       await Promise.all(promises);
     }
+
     this.isLoading = false;
     this.statusMessage = '';
     this.notificationService.success('Photo processing complete');
@@ -193,7 +274,7 @@ export class FormComponent {
       const dirHandle = await (window as any).showDirectoryPicker();
       for (let i = 0; i < this.screenshotBlobs.length; i++) {
         const blob = this.screenshotBlobs[i];
-        const originalUrl = this.resultList[i];
+        const originalUrl = this.resultList1[i];
         let titleOfPage = 'untitled';
         try {
           const segments = new URL(originalUrl).pathname.split('/');

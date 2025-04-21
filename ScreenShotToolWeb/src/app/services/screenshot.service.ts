@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
+import { ScreenshotResponse } from '../models/screentShot.models';
 
 @Injectable({
   providedIn: 'root',
@@ -7,18 +8,34 @@ import { HttpClient } from '@angular/common/http';
 export class ScreenshotService {
   constructor(private http: HttpClient) {}
 
-  captureScreenshot(queryParams: any): Promise<Blob> {
-    const queryString = new URLSearchParams(queryParams).toString();
-    const fullUrl = `https://localhost:7156/api/screen-shot?${queryString}`;
+  // captureScreenshot(payload: any): Promise<Blob> {
+  //   const fullUrl = `https://localhost:7156/api/screen-shot`;
+
+  //   return this.http
+  //     .post(fullUrl, payload, { responseType: 'blob' })
+  //     .toPromise()
+  //     .then((blob) => {
+  //       if (!blob) {
+  //         throw new Error('No Blob returned from API');
+  //       }
+  //       return blob;
+  //     })
+  //     .catch((error) => {
+  //       console.error('Error capturing screenshot:', error);
+  //       throw error;
+  //     });
+  // }
+  captureScreenshot(payload: any): Promise<ScreenshotResponse> {
+    const fullUrl = `https://localhost:7156/api/screen-shot123`;
 
     return this.http
-      .get(fullUrl, { responseType: 'blob' })
+      .post<ScreenshotResponse>(fullUrl, payload)
       .toPromise()
-      .then((blob) => {
-        if (!blob) {
-          throw new Error('No Blob returned from API');
+      .then((res) => {
+        if (!res || !res.base64Image) {
+          throw new Error('Invalid screenshot response');
         }
-        return blob;
+        return res;
       })
       .catch((error) => {
         console.error('Error capturing screenshot:', error);
