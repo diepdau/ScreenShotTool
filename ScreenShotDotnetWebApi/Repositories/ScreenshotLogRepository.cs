@@ -23,10 +23,11 @@ namespace ScreenshotTool.Repositories
 
             return await _context.ScreenshotLogs
                 .Where(x =>
-                    x.Url == currentLog.Url &&
-                    x.LanguageId == currentLog.LanguageId &&
-                    x.AccountId == currentLog.AccountId &&
-                    x.ProjectSlug == currentLog.ProjectSlug 
+                    x.Url == currentLog.Url 
+                    //&&
+                    //x.LanguageId == currentLog.LanguageId &&
+                    //x.AccountId == currentLog.AccountId &&
+                    //x.ProjectSlug == currentLog.ProjectSlug 
                     //&&   x.CreatedAt.Date == yesterday
                     )
                 .OrderByDescending(x => x.CreatedAt)

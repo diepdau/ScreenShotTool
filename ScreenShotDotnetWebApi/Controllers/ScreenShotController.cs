@@ -25,86 +25,85 @@ namespace ScreenshotTool.Controllers
             _screenShot = new ScreenShot();
         }
 
-        //[HttpPost("screen-shot")]
-        //public async Task<IActionResult> PostScreenshot([FromBody] ScreenshotRequest request)
-        //{
-        //    if (string.IsNullOrWhiteSpace(request.Url))
-        //        return BadRequest("URL không được để trống");
-
-        //    int width = request.Width.GetValueOrDefault(1920);
-        //    if (width <= 300)
-        //        return BadRequest("Chiều rộng không được nhỏ hơn hoặc bằng 300");
-
-        //    string customCss = request.CustomCss switch
-        //    {
-        //        null => ".hide.hidden { display: block !important; background-color: rgba(251, 233, 233, 255); }",
-        //        "0" => "",
-        //        _ => request.CustomCss
-        //    };
-
-        //    string folderPath = request.FolderPath ?? string.Empty;
-        //    int delay = request.Delay.GetValueOrDefault(0);
-        //    var stopwatch = Stopwatch.StartNew();
-        //    var path = await _screenShot.CaptureScreenshotAsync(request.Url, width, customCss, folderPath, delay);
-        //    stopwatch.Stop();
-        //    Console.WriteLine($"Thời gian chụp screenshot: {stopwatch.Elapsed.TotalSeconds} giây");
-        //    var fileBytes = await System.IO.File.ReadAllBytesAsync(path);
-        //    return File(fileBytes, "image/png", Path.GetFileName(path));
-        //}
-
 
         [HttpPost("screen-shot")]
         public async Task<IActionResult> PostScreenshotCheck([FromBody] ScreenshotRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Url))
-                return BadRequest("URL không được để trống");
-
-            int width = request.Width.GetValueOrDefault(1920);
-            if (width <= 300)
-                return BadRequest("Chiều rộng không được nhỏ hơn hoặc bằng 300");
-
-            string customCss = request.CustomCss switch
+            try
             {
-                null => ".hide.hidden { display: block !important; background-color: rgba(251, 233, 233, 255); }",
-                "0" => "",
-                _ => request.CustomCss
-            };
+                if (string.IsNullOrWhiteSpace(request.Url))
+                    return BadRequest("URL không được để trống");
 
-            string folderPath = request.FolderPath ?? string.Empty;
-            int delay = request.Delay.GetValueOrDefault(0);
+                int width = request.Width.GetValueOrDefault(1920);
+                if (width <= 300)
+                    return BadRequest("Chiều rộng không được nhỏ hơn hoặc bằng 300");
 
-            var screenshotPath = await _screenShot.CaptureScreenshotAsync(request.Url, width, customCss, folderPath, delay);
+                string customCss = request.CustomCss switch
+                {
+                    null => ".hide.hidden { display: block !important; background-color: rgba(251, 233, 233, 255); }",
+                    "0" => "",
+                    _ => request.CustomCss
+                };
+                if (string.IsNullOrWhiteSpace(request.FolderPath))
+                {
+                    return BadRequest(new { message = "chưa chọn folderPath" });
+                }
+                int delay = request.Delay.GetValueOrDefault(0);
 
-            // so sánh
-            var tempLog = new ScreenshotLog
-            {
-                CreatedAt = DateTime.Now,
-                Url = request.Url,
-                Width = width,
-                LanguageId = request.LanguageId,
-                AccountId = request.AccountId,
-                ProjectSlug = request.ProjectSlugs,
-                ImagePath = screenshotPath
-            };
+                var screenshotPath = await _screenShot.CaptureScreenshotAsync(request.Url, width, customCss, request.FolderPath, delay);
 
-            bool isSimilar = await _comparisonService.IsTodayScreenshotSimilarToYesterdayAsync(tempLog);
+                // so sánh
+                var tempLog = new ScreenshotLog
+                {
+                    CreatedAt = DateTime.Now,
+                    Url = request.Url,
+                    Width = width,
+                    LanguageId = request.LanguageId,
+                    AccountId = request.AccountId,
+                    ProjectSlug = request.ProjectSlugs,
+                    ImagePath = screenshotPath
+                };
+                
+                bool isSimilar = await _comparisonService.IsTodayScreenshotSimilarToYesterdayAsync(tempLog);
 
-            if (isSimilar)
-            {
-                if (System.IO.File.Exists(screenshotPath))
-                    System.IO.File.Delete(screenshotPath);
+                if (isSimilar)
+                {
+                    if (System.IO.File.Exists(screenshotPath))
+                        System.IO.File.Delete(screenshotPath);
 
-                //return Ok(new { message = "Ảnh này giống ảnh hôm qua", path = screenshotPath });
-                return Ok(new { message = "Ảnh này giống ảnh hôm qua"});
+                    return Ok(new { message = "Ảnh này giống ảnh hôm qua", path = screenshotPath });
+                }
+
+                await _logRepository.SaveLogAsync(tempLog);
+                return Ok(new { message = "Chụp ảnh thành công", path = screenshotPath });
             }
-
-            // Khac,lưu log mới
-            await _logRepository.SaveLogAsync(tempLog);
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(screenshotPath);
-            return File(fileBytes, "image/png", Path.GetFileName(screenshotPath));
+            catch(Exception e)
+            {
+               return StatusCode(500, new { message = "Error: " + e.Message }); ;
+            }
+           
         }
 
+        [HttpGet("select")]
+        public IActionResult SelectFolder()
+        {
+            var selectedPath = "";
+
+            var t = new Thread(() =>
+            {
+                using var dialog = new FolderBrowserDialog();
+                var result = dialog.ShowDialog();
+                if (result == DialogResult.OK) selectedPath = dialog.SelectedPath;
+            });
+
+            t.SetApartmentState(ApartmentState.STA);
+            t.Start();
+            t.Join();
+
+            if (string.IsNullOrEmpty(selectedPath)) return BadRequest("No folder selected.");
+
+            return Ok(new { folderPath = selectedPath });
+        }
 
     }
 }
