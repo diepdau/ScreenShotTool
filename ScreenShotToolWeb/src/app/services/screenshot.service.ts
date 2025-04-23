@@ -1,45 +1,32 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { ScreenshotResponse } from '../models/screentShot.models';
-
+import { Observable } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
 export class ScreenshotService {
   constructor(private http: HttpClient) {}
+  baseUrl = 'https://localhost:7156/api';
+  fetchUrlChooseFile(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/select`);
+  }
 
-  // captureScreenshot(payload: any): Promise<Blob> {
-  //   const fullUrl = `https://localhost:7156/api/screen-shot`;
-
-  //   return this.http
-  //     .post(fullUrl, payload, { responseType: 'blob' })
-  //     .toPromise()
-  //     .then((blob) => {
-  //       if (!blob) {
-  //         throw new Error('No Blob returned from API');
-  //       }
-  //       return blob;
-  //     })
-  //     .catch((error) => {
-  //       console.error('Error capturing screenshot:', error);
-  //       throw error;
-  //     });
-  // }
-  captureScreenshot(payload: any): Promise<ScreenshotResponse> {
-    const fullUrl = `https://localhost:7156/api/screen-shot123`;
-
+  captureScreenshot(payload: any): Promise<{ path: string; message: string }> {
+    const url = `${this.baseUrl}/screen-shot`;
     return this.http
-      .post<ScreenshotResponse>(fullUrl, payload)
-      .toPromise()
-      .then((res) => {
-        if (!res || !res.base64Image) {
-          throw new Error('Invalid screenshot response');
-        }
-        return res;
+      .post(url, payload, {
+        responseType: 'json',
       })
-      .catch((error) => {
-        console.error('Error capturing screenshot:', error);
-        throw error;
+      .toPromise()
+      .then((res: any) => {
+        if (!res || !res.path || !res.message) {
+          throw new Error('API không trả về dữ liệu hợp lệ');
+        }
+
+        return {
+          path: res.path,
+          message: res.message,
+        };
       });
   }
 }

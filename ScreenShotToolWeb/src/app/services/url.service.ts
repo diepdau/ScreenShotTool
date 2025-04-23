@@ -8,15 +8,12 @@ import { Observable } from 'rxjs';
 export class UrlService {
   constructor(private http: HttpClient) {}
 
-  fetchUrlsFromApi(apiUrl: string): Observable<any> {
-    return this.http.get<any>(apiUrl);
-  }
-
   fetchUrlsProjectLanguageIdFromApi(
     projectSlug: string,
-    languageId: string
+    languageId: string,
+    accountId: string
   ): Observable<any> {
-    const url = `https://tcma-api-public.dev.usms.impartner.io/showcase/urls?ProjectSlug=${projectSlug}&LanguageId=${languageId}&AccountId=147347`;
+    const url = `https://tcma-api-public.dev.usms.impartner.io/showcase/urls?ProjectSlug=${projectSlug}&LanguageId=${languageId}&AccountId=${accountId}`;
     return this.http.get<any>(url);
   }
 }

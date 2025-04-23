@@ -1,5 +1,4 @@
 ﻿using Microsoft.Playwright;
-using ScreenshotTool.Models;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -8,10 +7,9 @@ namespace ScreenshotTool
 {
     public class ScreenShot
     {
-        public async Task<string> CaptureScreenshotAsync(string url, int width = 1920, string customCss = "", string folderPath = "", int delayMilliseconds = 0)
 
+        public async Task<string> CaptureScreenshotAsync(string url, int width = 1920, string customCss = "", string folderPath = "", int delayMilliseconds = 0)
         {
-            folderPath = "D:\\";
             string titleOfPage = "untitled";
             try
             {
@@ -75,11 +73,9 @@ namespace ScreenshotTool
                 Path = filePath,
                 FullPage = true
             });
+
             return filePath;
         }
-
-      
-
 
 
     }
