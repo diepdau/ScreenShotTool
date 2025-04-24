@@ -13,8 +13,18 @@ namespace ScreenshotTool.Repositories
 
         public async Task SaveLogAsync(ScreenshotLog log)
         {
-            _context.ScreenshotLogs.Add(log);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.ScreenshotLogs.Add(log);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error occurred while saving data: " + ex.Message);
+                if (ex.InnerException != null)
+                    Console.WriteLine("Inner Exception: " + ex.InnerException.Message);
+            }
+
         }
 
         public async Task<ScreenshotLog?> GetPreviousLogAsync(ScreenshotLog currentLog)

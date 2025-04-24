@@ -65,6 +65,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseHttpsRedirection();
 
@@ -75,7 +76,7 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapFallbackToFile("index.html");
 
-
+app.UseRouting();
 
 app.MapControllers();
 app.Run();
