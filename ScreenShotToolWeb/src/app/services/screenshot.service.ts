@@ -6,13 +6,12 @@ import { Observable } from 'rxjs';
 })
 export class ScreenshotService {
   constructor(private http: HttpClient) {}
-  baseUrl = 'https://localhost:7156/api';
   fetchUrlChooseFile(): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/select`);
+    return this.http.get<any>('/api/select');
   }
 
   captureScreenshot(payload: any): Promise<{ path: string; message: string }> {
-    const url = `${this.baseUrl}/screen-shot`;
+    const url = `/api/screen-shot`;
     return this.http
       .post(url, payload, {
         responseType: 'json',

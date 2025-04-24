@@ -68,8 +68,8 @@ namespace ScreenshotTool.Controllers
 
                 if (isSimilar)
                 {
-                    if (System.IO.File.Exists(screenshotPath))
-                        System.IO.File.Delete(screenshotPath);
+                    //if (System.IO.File.Exists(screenshotPath))
+                    //    System.IO.File.Delete(screenshotPath);
 
                     return Ok(new { message = "Ảnh này giống ảnh hôm qua", path = screenshotPath });
                 }

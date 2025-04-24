@@ -2,7 +2,7 @@
 {
     public static class ScreenshotComparer
     {
-            public static bool AreImagesSimilar(string imagePath1, string imagePath2, double threshold = 0.95)
+            public static bool AreImagesSimilar(string imagePath1, string imagePath2, double threshold = 0.99)
             {
                 using var img1 = new Emgu.CV.Mat(imagePath1, Emgu.CV.CvEnum.ImreadModes.Color);
                 using var img2 = new Emgu.CV.Mat(imagePath2, Emgu.CV.CvEnum.ImreadModes.Color);
