@@ -23,38 +23,41 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-var services = new ServiceCollection();
+//var services = new ServiceCollection();
 
-services.AddResiliencePipeline("screenshot-pipeline", builder =>
-{
-    builder
-        .AddRetry(new RetryStrategyOptions
-        {
-            MaxRetryAttempts = 3,
-            Delay = TimeSpan.FromSeconds(2)
-        })
-        .AddTimeout(TimeSpan.FromSeconds(15));
-});
+//services.AddResiliencePipeline("screenshot-pipeline", builder =>
+//{
+//    builder
+//        .AddRetry(new RetryStrategyOptions
+//        {
+//            MaxRetryAttempts = 3,
+//            Delay = TimeSpan.FromSeconds(2)
+//        })
+//        .AddTimeout(TimeSpan.FromSeconds(15));
+//});
 
-var serviceProvider = services.BuildServiceProvider();
-var pipelineProvider = serviceProvider.GetRequiredService<ResiliencePipelineProvider<string>>();
+//var serviceProvider = services.BuildServiceProvider();
+//var pipelineProvider = serviceProvider.GetRequiredService<ResiliencePipelineProvider<string>>();
 
-// Lấy pipeline ra để sử dụng
-var screenshotPipeline = pipelineProvider.GetPipeline("screenshot-pipeline");
+//// Lấy pipeline ra để sử dụng
+//var screenshotPipeline = pipelineProvider.GetPipeline("screenshot-pipeline");
 
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:4200")
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials();
-        });
+    options.AddPolicy("AllowAngularDev", policy =>
+    {
+        policy.WithOrigins("http://localhost:4000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -65,8 +68,14 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseHttpsRedirection();
 
+app.UseCors("AllowAngularDev");
 app.UseAuthorization();
-app.UseCors("AllowAll");
-app.MapControllers();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
+
+
+
+app.MapControllers();
 app.Run();

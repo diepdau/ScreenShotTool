@@ -178,7 +178,7 @@ export class FormComponent {
             return;
           }
           this.addLog(`${screenshotCount++} Captured for ${url}`);
-          this.notificationService.success(result.message);
+          // this.notificationService.success(result.message);
         } catch (error: any) {
           this.addLog(
             `${screenshotCount++} Error capturing ${url}: ${JSON.stringify(
