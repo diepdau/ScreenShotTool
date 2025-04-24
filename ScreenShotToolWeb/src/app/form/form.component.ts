@@ -20,9 +20,9 @@ export class FormComponent {
   statusMessage = '';
   logs: { type: 'info' | 'error'; message: string }[] = [];
   fetchedUrls: string[] = [];
-  resultList: string[] = [];
-  screenshotBlobs: Blob[] = [];
+
   languageList: { languageName: string; languageId: string }[] = [];
+  accountList: { accountName: string; accountId: string }[] = [];
   urlRegex =
     /^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$/;
 
@@ -39,15 +39,30 @@ export class FormComponent {
         customCss: [''],
         delay: ['', Validators.min(0)],
         width: ['', Validators.min(300)],
-        folderPath: [''],
-        projectSlug: [''],
-        languageId: [''],
+        folderPath: ['', Validators.required],
+        projectSlug: ['rv-portal-template'],
+        languageId: ['1'],
+        accountId: ['147347'],
       },
       {
         validators: this.atLeastOneFieldValidator,
       }
     );
     this.setLanguageList();
+
+    this.form.get('urls')?.valueChanges.subscribe((value: string) => {
+      if (!value) return;
+      const formatted = value
+        .split(/https?:\/\//) // Tách
+        .filter((part) => part.trim() !== '')
+        .map((part) => 'https://' + part.trim())
+        .join('\n');
+
+      // Chỉ patchValue nếu giá trị đã được thay đổi (tránh vòng lặp)
+      if (formatted !== value) {
+        this.form.get('urls')?.patchValue(formatted, { emitEvent: false });
+      }
+    });
   }
   atLeastOneFieldValidator(group: FormGroup): ValidationErrors | null {
     const api = group.get('api')?.value?.trim();
@@ -72,27 +87,21 @@ export class FormComponent {
       { languageName: 'Canada-French', languageId: '52' },
       { languageName: 'Dutch', languageId: '11' },
     ];
+    this.accountList = [
+      { accountName: 'Account A', accountId: '147347' },
+      { accountName: 'Account B', accountId: '789012' },
+    ];
   }
-  fetchUrlsFromApi() {
-    this.urlService.fetchUrlsFromApi(this.form.value.api).subscribe({
-      next: (data) => {
-        this.fetchedUrls = data;
-        this.form.patchValue({ urls: data.join(', ') });
-        this.notificationService.success('URLs loaded successfully.');
-        this.addLog('Fetched ' + data.length + ' URLs');
-      },
-      error: (err) => {
-        this.notificationService.error('Failed to fetch URLs');
-        this.addLog('Error fetching URLs: ' + err.message, 'error');
-      },
-    });
-  }
-
   fetchUrlsProjectLanguageIdFromApi() {
+    if (this.form.value.api !== '') {
+      this.parseUrlAndSetFormValues(this.form.value.api);
+    }
+
     this.urlService
       .fetchUrlsProjectLanguageIdFromApi(
         this.form.value.projectSlug,
-        this.form.value.languageId
+        this.form.value.languageId,
+        this.form.value.accountId
       )
       .subscribe({
         next: (data) => {
@@ -117,8 +126,6 @@ export class FormComponent {
 
     this.isLoading = true;
     this.statusMessage = 'Processing screenshot...';
-    this.resultList = [];
-    this.screenshotBlobs = [];
 
     const urlsArray = this.form.value.urls
       .split(',')
@@ -144,90 +151,52 @@ export class FormComponent {
       }
       return chunks;
     }
+
     let screenshotCount = 1;
     const chunks = chunkArray(urlsArray, 10);
     for (const chunk of chunks) {
       const promises = chunk.map(async (url) => {
-        const queryParams = new URLSearchParams({
+        const payload = {
           url: url,
-          width: this.form.value.width || '',
-          customCss: this.form.value.customCss || '',
-          folderPath: this.form.value.folderPath || '',
-          delay: this.form.value.delay || 0,
-        }).toString();
+          width: this.form.value.width || null,
+          customCss: this.form.value.customCss || null,
+          folderPath: this.form.value.folderPath || null,
+          delay: this.form.value.delay || null,
+          languageId: this.form.value.languageId || '1',
+          accountId: this.form.value.accountId || '147347',
+          projectSlugs: this.form.value.projectSlug || 'rv-portal-template',
+        };
+
         try {
-          const blob = await this.screenshotService.captureScreenshot(
-            queryParams
+          const result = await this.screenshotService.captureScreenshot(
+            payload
           );
-          if (blob) {
-            this.screenshotBlobs.push(blob);
-            this.addLog(`${screenshotCount++} Screenshot captured for ${url}`);
-            this.resultList.push(url);
-          } else {
-            this.addLog(`Screenshot not captured for ${url}`, 'error');
+
+          if (result.message.includes('giống')) {
+            this.addLog(`${screenshotCount++} Duplicate for ${url}`, 'info');
+            this.notificationService.success('Duplicate image');
+            return;
           }
-        } catch (error) {
+          this.addLog(`${screenshotCount++} Captured for ${url}`);
+          this.notificationService.success(result.message);
+        } catch (error: any) {
           this.addLog(
             `${screenshotCount++} Error capturing ${url}: ${JSON.stringify(
               error
             )}`,
             'error'
           );
+          this.notificationService.error('Lỗi khi chụp ảnh');
         }
       });
       await Promise.all(promises);
     }
+
     this.isLoading = false;
     this.statusMessage = '';
     this.notificationService.success('Photo processing complete');
   }
 
-  async saveToLocalFolder() {
-    this.isLoading = true;
-    this.statusMessage = 'Processing...';
-    try {
-      if (!this.screenshotBlobs.length || !this.resultList?.length) {
-        this.addLog('Cannot find image!');
-        return;
-      }
-      const dirHandle = await (window as any).showDirectoryPicker();
-      for (let i = 0; i < this.screenshotBlobs.length; i++) {
-        const blob = this.screenshotBlobs[i];
-        const originalUrl = this.resultList[i];
-        let titleOfPage = 'untitled';
-        try {
-          const segments = new URL(originalUrl).pathname.split('/');
-          const pageIndex = segments.findIndex((s) => s === 'page');
-          if (pageIndex !== -1 && pageIndex + 1 < segments.length) {
-            titleOfPage = segments[pageIndex + 1];
-          }
-        } catch (e) {
-          this.notificationService.error('URL parse error');
-          console.warn('URL parse error:', e);
-        }
-
-        const now = new Date();
-        const timeStr = `${now.getHours()}_${now.getMinutes()}_${now.getSeconds()}`;
-        const fileName = `${titleOfPage}_${timeStr}.png`;
-
-        const fileHandle = await dirHandle.getFileHandle(fileName, {
-          create: true,
-        });
-        const writable = await fileHandle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      }
-      this.notificationService.success(
-        ` ${this.screenshotBlobs.length} images saved to the folder of your choice`
-      );
-      this.statusMessage = '';
-      this.addLog(`Image saved to folder successfully!`);
-      this.isLoading = false;
-    } catch (error) {
-      this.notificationService.error('Error save capture');
-      this.addLog(`Error save capture ${error}`, 'error');
-    }
-  }
   onReset() {
     this.form.reset();
     this.statusMessage = '';
@@ -239,8 +208,29 @@ export class FormComponent {
     const timeStr = now.toLocaleTimeString();
     this.logs.push({ type, message: `[${timeStr}] ${message}` });
   }
+  parseUrlAndSetFormValues(fullUrl: string) {
+    const url = new URL(fullUrl);
+    const projectSlug = url.searchParams.get('ProjectSlug') || '';
+    const languageId = url.searchParams.get('LanguageId') || '';
+    const accountId = url.searchParams.get('AccountId') || '';
 
-  get canSave(): boolean {
-    return this.screenshotBlobs.length > 0 && this.resultList.length > 0;
+    this.form.patchValue({
+      projectSlug,
+      languageId,
+      accountId,
+    });
+    this.form.get('projectSlug')?.setValue(projectSlug);
+    this.form.get('LanguageId')?.setValue(languageId);
+    this.form.get('AccountId')?.setValue(accountId);
+  }
+  ChooseFolder() {
+    this.screenshotService.fetchUrlChooseFile().subscribe({
+      next: (data) => {
+        this.form.get('folderPath')?.setValue(data.folderPath);
+      },
+      error: (err) => {
+        console.log(err);
+      },
+    });
   }
 }

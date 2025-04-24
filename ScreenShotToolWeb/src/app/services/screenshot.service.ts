@@ -1,28 +1,32 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-
+import { HttpClient, HttpResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
 export class ScreenshotService {
   constructor(private http: HttpClient) {}
+  baseUrl = 'https://localhost:7156/api';
+  fetchUrlChooseFile(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/select`);
+  }
 
-  captureScreenshot(queryParams: any): Promise<Blob> {
-    const queryString = new URLSearchParams(queryParams).toString();
-    const fullUrl = `https://localhost:7156/api/screen-shot?${queryString}`;
-
+  captureScreenshot(payload: any): Promise<{ path: string; message: string }> {
+    const url = `${this.baseUrl}/screen-shot`;
     return this.http
-      .get(fullUrl, { responseType: 'blob' })
-      .toPromise()
-      .then((blob) => {
-        if (!blob) {
-          throw new Error('No Blob returned from API');
-        }
-        return blob;
+      .post(url, payload, {
+        responseType: 'json',
       })
-      .catch((error) => {
-        console.error('Error capturing screenshot:', error);
-        throw error;
+      .toPromise()
+      .then((res: any) => {
+        if (!res || !res.path || !res.message) {
+          throw new Error('API không trả về dữ liệu hợp lệ');
+        }
+
+        return {
+          path: res.path,
+          message: res.message,
+        };
       });
   }
 }
