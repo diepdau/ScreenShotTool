@@ -7,7 +7,9 @@ import { Observable } from 'rxjs';
 })
 export class UrlService {
   constructor(private http: HttpClient) {}
-
+  fetchUrlsFromApi(apiUrl: string): Observable<any> {
+    return this.http.get<any>(apiUrl);
+  }
   fetchUrlsProjectLanguageIdFromApi(
     projectSlug: string,
     languageId: string,

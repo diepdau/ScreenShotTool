@@ -2,8 +2,8 @@
 <!-- https://go.microsoft.com/fwlink/?LinkID=208121. -->
 <Project>
   <PropertyGroup>
-    <_PublishTargetUrl>D:\hk2_n4\Thuctap\ScreenShotTool\ScreenShotDotnetWebApi\bin\Release\net8.0-windows\publish\</_PublishTargetUrl>
-    <History>True|2025-04-24T17:12:16.7190694Z||;True|2025-04-24T16:53:25.0984632+07:00||;</History>
+    <_PublishTargetUrl>D:\ScreenShotTool\ScreenShotTool\ScreenShotDotnetWebApi\bin\Release\net8.0-windows\publish\</_PublishTargetUrl>
+    <History>True|2025-04-25T07:49:00.9991398Z||;True|2025-04-25T11:09:42.5691941+07:00||;False|2025-04-25T11:06:04.6989101+07:00||;False|2025-04-25T11:03:45.6403049+07:00||;True|2025-04-25T10:35:50.8018648+07:00||;True|2025-04-25T00:12:16.7190694+07:00||;True|2025-04-24T16:53:25.0984632+07:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

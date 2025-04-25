@@ -32,11 +32,11 @@ namespace ScreenshotTool.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(request.Url))
-                    return BadRequest("URL không được để trống");
+                    return BadRequest("URL cannot be left blank");
 
                 int width = request.Width.GetValueOrDefault(1920);
                 if (width <= 300)
-                    return BadRequest("Chiều rộng không được nhỏ hơn hoặc bằng 300");
+                    return BadRequest("Width must not be less than or equal to 300");
 
                 string customCss = request.CustomCss switch
                 {
@@ -46,7 +46,7 @@ namespace ScreenshotTool.Controllers
                 };
                 if (string.IsNullOrWhiteSpace(request.FolderPath))
                 {
-                    return BadRequest(new { message = "chưa chọn folderPath" });
+                    return BadRequest(new { message = "FolderPath is not selected" });
                 }
                 int delay = request.Delay.GetValueOrDefault(0);
 
@@ -71,11 +71,19 @@ namespace ScreenshotTool.Controllers
                     //if (System.IO.File.Exists(screenshotPath))
                     //    System.IO.File.Delete(screenshotPath);
 
-                    return Ok(new { message = "Ảnh này giống ảnh hôm qua", path = screenshotPath });
+                    return Ok(new { message = "This photo is the same as yesterday's photo.", path = screenshotPath });
+                }
+                await _logRepository.SaveLogAsync(tempLog);
+
+                if (screenshotPath.Contains("Timeout"))
+                {
+                    return Ok(new { message = screenshotPath, path = screenshotPath });
+                }
+                else
+                {
+                    return Ok(new { message = "Take photos successfully", path = screenshotPath });
                 }
 
-                await _logRepository.SaveLogAsync(tempLog);
-                return Ok(new { message = "Chụp ảnh thành công", path = screenshotPath });
             }
             catch(Exception e)
             {

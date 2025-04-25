@@ -41,10 +41,7 @@ export class FormComponent {
         customCss: [''],
         delay: ['', Validators.min(0)],
         width: ['', Validators.min(300)],
-        folderPath: [
-          '',
-          [Validators.required, this.folderPathValidator()]
-        ],
+        folderPath: ['', [Validators.required, this.folderPathValidator()]],
         projectSlug: ['rv-portal-template'],
         languageId: ['1'],
         accountId: ['147347'],
@@ -53,28 +50,28 @@ export class FormComponent {
         validators: this.atLeastOneFieldValidator,
       }
     );
-    this.setLanguageList();
 
     this.form.get('urls')?.valueChanges.subscribe((value: string) => {
       if (!value) return;
-    
+
       const lines = value
         .split('\n')
-        .map(line => line.trim())
-        .filter(line => line !== '');
-    
-      const formatted = lines.map(line => {
-        if (!line.startsWith('http://') && !line.startsWith('https://')) {
-          return 'https://' + line;
-        }
-        return line;
-      }).join('\n');
-    
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+
+      const formatted = lines
+        .map((line) => {
+          if (!line.startsWith('http://') && !line.startsWith('https://')) {
+            return 'https://' + line;
+          }
+          return line;
+        })
+        .join('\n');
+
       if (formatted !== value.trim()) {
         this.form.get('urls')?.patchValue(formatted, { emitEvent: false });
       }
     });
-    
   }
   atLeastOneFieldValidator(group: FormGroup): ValidationErrors | null {
     const api = group.get('api')?.value?.trim();
@@ -94,48 +91,116 @@ export class FormComponent {
       return isValid ? null : { invalidFolderPath: true };
     };
   }
-  private setLanguageList(): void {
-    this.languageList = [
-      { languageName: 'German', languageId: '3' },
-      { languageName: 'Hungarian', languageId: '33' },
-      { languageName: 'German', languageId: '2' },
-      { languageName: 'Latvian', languageId: '34' },
-      { languageName: 'English Global', languageId: '1' },
-      { languageName: 'Slovakian', languageId: '38' },
-      { languageName: 'Canada-French', languageId: '52' },
-      { languageName: 'Dutch', languageId: '11' },
-    ];
-    this.accountList = [
-      { accountName: 'Account A', accountId: '147347' },
-      { accountName: 'Account B', accountId: '147398' },
-    ];
-  }
-  fetchUrlsProjectLanguageIdFromApi() {
-    if (this.form.value.api !== '') {
-      this.parseUrlAndSetFormValues(this.form.value.api);
+
+  fetchUrlsFromApi() {
+    const apiUrl = this.form.value.api;
+
+    if (!apiUrl || apiUrl.trim() === '') {
+      this.notificationService.error('API URL is required.');
+      this.addLog('Attempted to fetch URLs without API URL');
+      return;
     }
-
-    this.urlService
-      .fetchUrlsProjectLanguageIdFromApi(
-        this.form.value.projectSlug,
-        this.form.value.languageId,
-        this.form.value.accountId
-      )
-      .subscribe({
-        next: (data) => {
-          this.fetchedUrls = data;
-          this.form.patchValue({ urls: data.join(', ') });
-          this.notificationService.success('URLs loaded successfully.');
-          this.addLog('Fetched ' + data.length + ' URLs');
-        },
-        error: (err) => {
-          this.notificationService.error('Failed to fetch URLs');
-          this.statusMessage = '';
-          this.addLog('Error fetching URLs: ' + err.message, 'error');
-        },
-      });
+    this.parseUrlAndSetFormValues(this.form.value.api);
+    this.urlService.fetchUrlsFromApi(apiUrl).subscribe({
+      next: (data) => {
+        this.fetchedUrls = data;
+        this.form.patchValue({ urls: data.join(', ') });
+        this.notificationService.success('URLs loaded successfully.');
+        this.addLog('Fetched ' + data.length + ' URLs');
+      },
+      error: (err) => {
+        this.notificationService.error('Failed to fetch URLs');
+        this.addLog('Error fetching URLs: ' + err.message, 'error');
+      },
+    });
   }
+  // async onSubmit() {
+  //   if (this.form.invalid) {
+  //     this.form.markAllAsTouched();
+  //     return;
+  //   }
 
+  //   this.isLoading = true;
+  //   this.statusMessage = 'Processing screenshot...';
+
+  //   const urlsArray = this.form.value.urls
+  //     .split(',')
+  //     .map((url: string) => url.trim())
+  //     .filter(Boolean);
+
+  //   const invalidUrls = urlsArray.filter(
+  //     (url: any) => !this.urlRegex.test(url)
+  //   );
+  //   if (invalidUrls.length > 0) {
+  //     this.isLoading = false;
+  //     this.notificationService.error(
+  //       `The following URLs are invalid: \n\n${invalidUrls.join('\n')}`
+  //     );
+  //     this.statusMessage = 'Please check the urls again...';
+  //     this.addLog(`Invalid URLs: ${invalidUrls.join('\n')}`, 'error');
+  //     return;
+  //   }
+
+  //   function chunkArray(array: any[], chunkSize: number) {
+  //     const chunks = [];
+  //     for (let i = 0; i < array.length; i += chunkSize) {
+  //       chunks.push(array.slice(i, i + chunkSize));
+  //     }
+  //     return chunks;
+  //   }
+
+  //   let screenshotCount = 1;
+  //   const chunks = chunkArray(urlsArray, 10);
+  //   for (const chunk of chunks) {
+  //     const promises = chunk.map(async (url) => {
+  //       const payload = {
+  //         url: url,
+  //         width: this.form.value.width || null,
+  //         customCss: this.form.value.customCss || null,
+  //         folderPath: this.form.value.folderPath || null,
+  //         delay: this.form.value.delay || null,
+  //         languageId: this.form.value.languageId || '1',
+  //         accountId: this.form.value.accountId || '147347',
+  //         projectSlugs: this.form.value.projectSlug || 'rv-portal-template',
+  //       };
+
+  //       // try {
+  //       //   const result = await this.screenshotService.captureScreenshot(
+  //       //     payload
+  //       //   );
+
+  //       //   if (result.message.includes('giống')) {
+  //       //     this.addLog(`${screenshotCount++} Duplicate for ${url}`, 'info');
+  //       //     this.notificationService.success('Duplicate image');
+  //       //     return;
+  //       //   }
+  //       //   if (result.message.includes('Timeout')) {
+  //       //     this.addLog(`${screenshotCount++} Timeout ${url}`, 'info');
+  //       //     this.notificationService.success(
+  //       //       'Timeout image - Cannot be captured '
+  //       //     );
+  //       //     return;
+  //       //   }
+  //       //   this.addLog(`${screenshotCount++} Captured for ${url}`);
+  //       //   // this.notificationService.success(result.message);
+  //       // } catch (error: any) {
+  //       //   this.addLog(
+  //       //     `${screenshotCount++} Error capturing ${url}: ${JSON.stringify(
+  //       //       error
+  //       //     )}`,
+  //       //     'error'
+  //       //   );
+  //       //   this.notificationService.error('Error when taking photos');
+  //       // }
+
+  //     });
+  //     await Promise.all(promises);
+  //   }
+
+  //   this.isLoading = false;
+  //   this.statusMessage = '';
+  //   this.notificationService.success('Photo processing complete');
+  // }
   async onSubmit() {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -153,12 +218,13 @@ export class FormComponent {
     const invalidUrls = urlsArray.filter(
       (url: any) => !this.urlRegex.test(url)
     );
+
     if (invalidUrls.length > 0) {
       this.isLoading = false;
       this.notificationService.error(
         `The following URLs are invalid: \n\n${invalidUrls.join('\n')}`
       );
-      this.statusMessage = 'Please check the urls again...';
+      this.statusMessage = 'Please check the URLs again...';
       this.addLog(`Invalid URLs: ${invalidUrls.join('\n')}`, 'error');
       return;
     }
@@ -187,20 +253,39 @@ export class FormComponent {
         };
 
         try {
-          const result = await this.screenshotService.captureScreenshot(
-            payload
-          );
+          const result = await this.screenshotService
+            .captureScreenshot(payload)
+            .toPromise();
 
-          if (result.message.includes('giống')) {
+          if (!result || !result.message) {
+            this.addLog(
+              `${screenshotCount++} Error capturing for ${url}: Result is undefined or invalid`,
+              'error'
+            );
+            this.notificationService.error(
+              'Error: Invalid response from the server'
+            );
+            return;
+          }
+          if (result.message.includes('same')) {
             this.addLog(`${screenshotCount++} Duplicate for ${url}`, 'info');
             this.notificationService.success('Duplicate image');
             return;
           }
+
+          if (result.message.includes('Timeout')) {
+            this.addLog(`${screenshotCount++} Timeout for ${url}`, 'info');
+            this.notificationService.success(
+              'Timeout image - Cannot be captured'
+            );
+            return;
+          }
+
           this.addLog(`${screenshotCount++} Captured for ${url}`);
-          // this.notificationService.success(result.message);
+          this.notificationService.success(result.message);
         } catch (error: any) {
           this.addLog(
-            `${screenshotCount++} Error capturing ${url}: ${JSON.stringify(
+            `${screenshotCount++} Error capturing for ${url}: ${JSON.stringify(
               error
             )}`,
             'error'
@@ -208,9 +293,9 @@ export class FormComponent {
           this.notificationService.error('Error when taking photos');
         }
       });
+
       await Promise.all(promises);
     }
-
     this.isLoading = false;
     this.statusMessage = '';
     this.notificationService.success('Photo processing complete');

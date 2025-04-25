@@ -13,48 +13,9 @@
       ></textarea>
     </div>
 
-    <div class="flex gap-4 justify-between">
-      <div class="w-full">
-        <label class="block mb-1 font-medium">ProjectSlug:</label>
-        <input
-          formControlName="projectSlug"
-          type="text"
-          placeholder="Enter ProjectSlug"
-          class="w-full border rounded px-3 py-2 placeholder:text-gray-600"
-        />
-      </div>
-      <div class="w-full">
-        <label class="block mb-1 font-medium">Language:</label>
-        <select
-          formControlName="languageId"
-          class="w-full border rounded px-3 py-2 text-gray-700 bg-white"
-          aria-placeholder="Choose language"
-        >
-          <option value="" disabled selected>Select a language</option>
-          <option *ngFor="let lang of languageList" [value]="lang.languageId">
-            {{ lang.languageName }}
-          </option>
-        </select>
-      </div>
-
-      <div class="w-full">
-        <label class="block mb-1 font-medium">Account:</label>
-        <select
-          formControlName="accountId"
-          class="w-full border rounded px-3 py-2 text-gray-700 bg-white"
-          aria-placeholder="Choose account"
-        >
-          <option value="" disabled selected>Select a account</option>
-          <option *ngFor="let acc of accountList" [value]="acc.accountId">
-            {{ acc.accountName }}
-          </option>
-        </select>
-      </div>
-    </div>
-
     <button
       type="button"
-      (click)="fetchUrlsProjectLanguageIdFromApi()"
+      (click)="fetchUrlsFromApi()"
       class="mt-2 bg-blue-400 text-white px-3 py-1 rounded cursor-pointer hover:bg-blue-500"
     >
       Fetch URLs
@@ -150,7 +111,13 @@
           "
         />
       </div>
-      <div *ngIf="form.get('folderPath')?.hasError('invalidFolderPath') && form.get('folderPath')?.touched" class="text-red-500 text-sm">
+      <div
+        *ngIf="
+          form.get('folderPath')?.hasError('invalidFolderPath') &&
+          form.get('folderPath')?.touched
+        "
+        class="text-red-500 text-sm"
+      >
         Invalid path. Example: D:\Folder
       </div>
     </div>

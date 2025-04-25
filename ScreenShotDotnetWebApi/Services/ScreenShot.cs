@@ -11,13 +11,12 @@ namespace ScreenshotTool.Services
 {
     public class ScreenShot
     {
-    
+
         public async Task<string> CaptureScreenshotAsync(string url, int width = 1920, string customCss = "", string folderPath = "", int delayMilliseconds = 0)
         {
             var now = DateTime.Now;
             var screenshotFolder = Path.Combine(folderPath, "screenshot", now.Year.ToString(), now.Month.ToString("D2"), now.Day.ToString("D2"));
             Directory.CreateDirectory(screenshotFolder);
-
 
             using var playwright = await Playwright.CreateAsync();
             await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
@@ -31,31 +30,43 @@ namespace ScreenshotTool.Services
             });
 
             var page = await context.NewPageAsync();
-            var retryGotoPolicy = Policy
-             .Handle<TimeoutException>()
-             .Or<PlaywrightException>()
-             .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(2),
-                 (exception, timeSpan, retryCount, context) =>
-                 {
-                     Console.WriteLine($"[GotoAsync] Retry {retryCount} after {timeSpan.TotalSeconds}s due to: {exception.Message}");
-                 });
 
-            await retryGotoPolicy.ExecuteAsync(async () =>
-            {
-                await page.GotoAsync(url, new PageGotoOptions
+            var retryGotoPolicy = Policy
+                .Handle<TimeoutException>()
+                .Or<PlaywrightException>()
+                .WaitAndRetryAsync(2, retryAttempt => TimeSpan.FromSeconds(1),
+                    (exception, timeSpan, retryCount, _) =>
+                    {
+                        Console.WriteLine($"[GotoAsync] Retry {retryCount} after {timeSpan.TotalSeconds}s due to: {exception.Message}");
+                    });
+
+                var gotoTask = retryGotoPolicy.ExecuteAsync(async () =>
                 {
-                    WaitUntil = WaitUntilState.NetworkIdle,
-                    Timeout = 200000
+                    await page.GotoAsync(url, new PageGotoOptions
+                    {
+                        WaitUntil = WaitUntilState.NetworkIdle,
+                        Timeout = 200000 
+                    });
                 });
 
-            });
+                // Task giới hạn thời gian (10 giây)
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10));
+                var completedTask = await Task.WhenAny(gotoTask, timeoutTask);
+                if (completedTask == timeoutTask)
+                {
+                    Console.WriteLine("[CaptureScreenshotAsync] Timeout after 10 seconds.");
+                    return "\r\nTimeout - cannot capture"; 
+                }
+
+                await gotoTask;
+
+           
 
             await page.WaitForFunctionAsync("() => document.title && document.title !== 'about:blank'");
             string titleOfPage = await page.TitleAsync();
 
             var filename = $"{titleOfPage}_{now:HH_mm_ss}.png";
             var filePath = Path.Combine(screenshotFolder, filename);
-
 
             if (!string.IsNullOrWhiteSpace(customCss))
             {

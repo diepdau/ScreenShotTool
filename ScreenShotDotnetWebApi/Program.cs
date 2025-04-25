@@ -7,6 +7,7 @@ using Polly.Retry;
 using Polly;
 using System.Threading;
 using Polly.Registry;
+using Microsoft.Playwright;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,15 +27,32 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngularDev", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:4000")
+        policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(5998);
+});
 var app = builder.Build();
+int exitCode = Microsoft.Playwright.Program.Main(new[] { "install", "chromium" });
+if (exitCode != 0)
+{
+    throw new Exception($"Failed to install Playwright with exit code {exitCode}.");
+}
+else
+{
+    Console.WriteLine("Playwright installation successful.");
+}
+
+var playwright = await Playwright.CreateAsync();
+
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -49,7 +67,7 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAngularDev");
+app.UseCors("AllowAll");
 app.UseAuthorization();
 
 app.UseDefaultFiles();
@@ -59,5 +77,4 @@ app.MapFallbackToFile("index.html");
 app.UseRouting();
 
 app.MapControllers();
-
 app.Run();
