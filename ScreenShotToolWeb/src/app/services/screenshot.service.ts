@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 @Injectable({
   providedIn: 'root',
 })
@@ -9,7 +10,6 @@ export class ScreenshotService {
   fetchUrlChooseFile(): Observable<any> {
     return this.http.get<any>('/api/select');
   }
-
   captureScreenshot(payload: any): Promise<{ path: string; message: string }> {
     const url = `/api/screen-shot`;
     return this.http

@@ -1,9 +1,11 @@
 import { Component } from '@angular/core';
 import { NotificationService } from '../services/notification.service';
 import {
+  AbstractControl,
   FormBuilder,
   FormGroup,
   ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { UrlService } from '../services/url.service';
@@ -39,7 +41,10 @@ export class FormComponent {
         customCss: [''],
         delay: ['', Validators.min(0)],
         width: ['', Validators.min(300)],
-        folderPath: ['', Validators.required],
+        folderPath: [
+          '',
+          [Validators.required, this.folderPathValidator()]
+        ],
         projectSlug: ['rv-portal-template'],
         languageId: ['1'],
         accountId: ['147347'],
@@ -52,17 +57,24 @@ export class FormComponent {
 
     this.form.get('urls')?.valueChanges.subscribe((value: string) => {
       if (!value) return;
-      const formatted = value
-        .split(/https?:\/\//) // Tách
-        .filter((part) => part.trim() !== '')
-        .map((part) => 'https://' + part.trim())
-        .join('\n');
-
-      // Chỉ patchValue nếu giá trị đã được thay đổi (tránh vòng lặp)
-      if (formatted !== value) {
+    
+      const lines = value
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '');
+    
+      const formatted = lines.map(line => {
+        if (!line.startsWith('http://') && !line.startsWith('https://')) {
+          return 'https://' + line;
+        }
+        return line;
+      }).join('\n');
+    
+      if (formatted !== value.trim()) {
         this.form.get('urls')?.patchValue(formatted, { emitEvent: false });
       }
     });
+    
   }
   atLeastOneFieldValidator(group: FormGroup): ValidationErrors | null {
     const api = group.get('api')?.value?.trim();
@@ -75,7 +87,13 @@ export class FormComponent {
     }
     return null;
   }
-
+  folderPathValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const path = control.value;
+      const isValid = /^[a-zA-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\?)*$/.test(path);
+      return isValid ? null : { invalidFolderPath: true };
+    };
+  }
   private setLanguageList(): void {
     this.languageList = [
       { languageName: 'German', languageId: '3' },
@@ -89,7 +107,7 @@ export class FormComponent {
     ];
     this.accountList = [
       { accountName: 'Account A', accountId: '147347' },
-      { accountName: 'Account B', accountId: '789012' },
+      { accountName: 'Account B', accountId: '147398' },
     ];
   }
   fetchUrlsProjectLanguageIdFromApi() {
@@ -140,6 +158,7 @@ export class FormComponent {
       this.notificationService.error(
         `The following URLs are invalid: \n\n${invalidUrls.join('\n')}`
       );
+      this.statusMessage = 'Please check the urls again...';
       this.addLog(`Invalid URLs: ${invalidUrls.join('\n')}`, 'error');
       return;
     }
@@ -186,7 +205,7 @@ export class FormComponent {
             )}`,
             'error'
           );
-          this.notificationService.error('Lỗi khi chụp ảnh');
+          this.notificationService.error('Error when taking photos');
         }
       });
       await Promise.all(promises);

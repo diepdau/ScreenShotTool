@@ -135,6 +135,7 @@
         <button
           type="button"
           (click)="ChooseFolder()"
+          [disabled]="isLoading"
           class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-700 cursor-pointer"
         >
           Choose Folder
@@ -148,6 +149,9 @@
             form.get('folderPath')?.invalid && form.get('folderPath')?.touched
           "
         />
+      </div>
+      <div *ngIf="form.get('folderPath')?.hasError('invalidFolderPath') && form.get('folderPath')?.touched" class="text-red-500 text-sm">
+        Invalid path. Example: D:\Folder
       </div>
     </div>
 

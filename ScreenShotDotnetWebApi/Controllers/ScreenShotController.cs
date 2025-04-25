@@ -104,6 +104,7 @@ namespace ScreenshotTool.Controllers
 
             return Ok(new { folderPath = selectedPath });
         }
+       
 
     }
 }

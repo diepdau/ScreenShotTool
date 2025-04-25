@@ -23,25 +23,6 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-//var services = new ServiceCollection();
-
-//services.AddResiliencePipeline("screenshot-pipeline", builder =>
-//{
-//    builder
-//        .AddRetry(new RetryStrategyOptions
-//        {
-//            MaxRetryAttempts = 3,
-//            Delay = TimeSpan.FromSeconds(2)
-//        })
-//        .AddTimeout(TimeSpan.FromSeconds(15));
-//});
-
-//var serviceProvider = services.BuildServiceProvider();
-//var pipelineProvider = serviceProvider.GetRequiredService<ResiliencePipelineProvider<string>>();
-
-//// Lấy pipeline ra để sử dụng
-//var screenshotPipeline = pipelineProvider.GetPipeline("screenshot-pipeline");
-
 
 builder.Services.AddCors(options =>
 {
@@ -59,7 +40,6 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -79,4 +59,5 @@ app.MapFallbackToFile("index.html");
 app.UseRouting();
 
 app.MapControllers();
+
 app.Run();

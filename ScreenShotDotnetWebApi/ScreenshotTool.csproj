@@ -8,9 +8,11 @@
 	  <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="D:\app.db" Link="app.db" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Update="app.db">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Emgu.CV" Version="4.10.0.5680" />
